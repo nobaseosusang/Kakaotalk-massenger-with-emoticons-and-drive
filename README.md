@@ -1,4 +1,4 @@
-# Kakaotalk-massenger-with-more-emoticons-and-easier-drive
+# Kakaotalk massenger with more emoticons and easier drive
 
 ## 기획 의도
 더 나은 메신저들이 있는데도 카카오톡을 사용하는 이유를 생각해 보면
