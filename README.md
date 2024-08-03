@@ -31,3 +31,5 @@
 가능하다면 함께 편집할 수 있도록 하기
 
 깃허브처럼 버전 기록하기
+
+![도식](https://github.com/user-attachments/assets/2196ff9f-2bcb-4b14-a129-34f2cbb32891)
