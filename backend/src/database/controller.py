@@ -1,5 +1,5 @@
-from models import User, ChatRoom, Message, Emoticon, File
-from database import Database
+from src.database.models import User, ChatRoom, Message, Emoticon, File
+from src.database.database import Database
 from datetime import datetime
 from typing import List
 from werkzeug.security import generate_password_hash, check_password_hash
