@@ -54,5 +54,3 @@ class File(Base):
     edited_by = Column(Text)  # Stores as comma-separated string
 
 
-# 데이터베이스 생성
-Base.metadata.create_all()

@@ -5,23 +5,33 @@ from src.database.controller import (
 )
 
 from flask import Flask, json, request, g
-
+from src.database.database import Database
+from src.database.models import Base
+from flask_cors import CORS
 from src.middleware.cors import cors
 from config import config
 
 
 
-def init_app():
+def create_app():
     app = Flask(__name__)
-    app.config["SECRET_KEY"] = config.SECRET_KEY
+    CORS(app)
 
-    # app에 뭔가 더 추가하고 싶은게 있으면 여기에 추가
-    cors.init_app(app)
+    # Database 객체 생성
+    database = Database()
+
+    # 데이터베이스 엔진에 메타데이터를 바인딩하여 테이블 생성
+    with app.app_context():
+        Base.metadata.bind = database.engine  # 명시적으로 엔진을 바인딩
+        Base.metadata.create_all()  # 테이블 생성
+
+    @app.before_request
+    def before_request():
+        g.db_session = database.get_session()
 
     return app
 
-app = init_app()
-
+app = create_app()
 
 
 # 연결이 끊어질때 db close
@@ -31,6 +41,9 @@ def teardown_db(exception):
     if db is not None:
         db.close()
 
+@app.route('/')
+def mmain():
+    return json.jsonify({'main': 'ok'})
 
 @app.route('/status')
 def status():
