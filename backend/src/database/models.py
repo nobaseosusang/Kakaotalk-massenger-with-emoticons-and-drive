@@ -8,14 +8,14 @@ class User(Base):
     __tablename__ = 'users'
     
     id = Column(Integer, primary_key=True, autoincrement=True)
-    username = Column(String, unique=True, nullable=False)
+    username = Column(String, unique=True, nullable=False)  # Username must be unique
     password = Column(String, nullable=False)
 
 class ChatRoom(Base):
     __tablename__ = 'chatrooms'
     
     id = Column(Integer, primary_key=True, autoincrement=True)
-    name = Column(String, unique=True, nullable=False)
+    name = Column(String, nullable=False)  # ChatRoom name can be duplicated
     allowed_users = Column(Text)  # Stores as comma-separated string
 
 class Message(Base):
@@ -32,7 +32,7 @@ class Emoticon(Base):
     __tablename__ = 'emoticons'
     
     id = Column(Integer, primary_key=True, autoincrement=True)
-    name = Column(String, nullable=False)
+    name = Column(String, nullable=False)  # Emoticon name can be duplicated
     url = Column(String, nullable=False)
     size = Column(String, nullable=False)  # small, medium, large
     animated = Column(Boolean, default=False)
@@ -44,7 +44,7 @@ class File(Base):
     __tablename__ = 'files'
     
     id = Column(Integer, primary_key=True, autoincrement=True)
-    filename = Column(String, nullable=False)
+    filename = Column(String, nullable=False)  # Filename can be duplicated
     url = Column(String, nullable=False)
     version = Column(Integer, default=1)
     uploaded_at = Column(DateTime, default=datetime.utcnow)

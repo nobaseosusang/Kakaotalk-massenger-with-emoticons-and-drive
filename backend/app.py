@@ -69,8 +69,11 @@ def create_chatroom_route():
     data = request.get_json()
     if data is None:
         return jsonify({'status': 'Invalid input, JSON data expected'}), 400
-    chatroom = create_chatroom(data['name'], data['allowed_users'])
+    chatroom, error = create_chatroom(data['name'], data['allowed_users'])
+    if error:
+        return jsonify({'status': 'Error', 'message': error}), 409  # 409 Conflict 상태 코드 반환
     return jsonify({'status': 'Chatroom created', 'chatroom': chatroom.name})
+
 
 @app.route('/send_message', methods=['POST'])
 def send_message_route():
