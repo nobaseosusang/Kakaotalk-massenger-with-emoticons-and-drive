@@ -1,10 +1,8 @@
 from datetime import datetime
-from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime, Boolean, ForeignKey
-from sqlalchemy.orm import relationship, sessionmaker
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.sql.schema import Column
+from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, ForeignKey
+from sqlalchemy.ext.declarative import DeclarativeMeta, declarative_base
 
-Base = declarative_base()
+Base: DeclarativeMeta = declarative_base()
 
 class User(Base):
     __tablename__ = 'users'
@@ -52,5 +50,3 @@ class File(Base):
     uploaded_at = Column(DateTime, default=datetime.utcnow)
     chatroom = Column(String, ForeignKey('chatrooms.name'), nullable=False)
     edited_by = Column(Text)  # Stores as comma-separated string
-
-

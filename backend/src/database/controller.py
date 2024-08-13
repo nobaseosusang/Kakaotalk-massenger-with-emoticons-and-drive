@@ -8,24 +8,38 @@ db = Database()
 
 def register_user(username: str, password: str):
     session = db.get_session()
+    
+    # 사용자 이름 중복 체크
+    existing_user = session.query(User).filter_by(username=username).first()
+    if existing_user:
+        session.close()
+        return None, "Username already exists"
+
+    # 새 사용자 추가
     hashed_password = generate_password_hash(password)
     user = User(username=username, password=hashed_password)
     session.add(user)
     session.commit()
-    return user
+
+    # 사용자 데이터를 세션 종료 전에 미리 추출
+    user_data = {'username': user.username}
+
+    session.close()
+    return user_data, None
 
 def authenticate_user(username: str, password: str) -> bool:
-    user = User.query.filter_by(username=username).first()
-    if user and check_password_hash(user.password, password):  # 여기서 user.password는 str 값임
+    session = db.get_session()
+    user = session.query(User).filter_by(username=username).first()
+    if user and check_password_hash(user.password, password):
         return True
     return False
-
 
 def create_chatroom(name: str, allowed_users: List[str]):
     session = db.get_session()
     chatroom = ChatRoom(name=name, allowed_users=','.join(allowed_users))
     session.add(chatroom)
     session.commit()
+    session.close()
     return chatroom
 
 def send_message(username: str, text: str, chatroom: str):
@@ -36,7 +50,9 @@ def send_message(username: str, text: str, chatroom: str):
         message = Message(username=username, text=text, timestamp=datetime.now(), chatroom=chatroom)
         session.add(message)
         session.commit()
+        session.close()
         return message
+    session.close()
     raise PermissionError("User not allowed in this chatroom")
 
 def get_messages(chatroom: str):
@@ -44,7 +60,9 @@ def get_messages(chatroom: str):
     room = session.query(ChatRoom).filter_by(name=chatroom).first()
     if room:
         messages = session.query(Message).filter_by(chatroom=chatroom).all()
+        session.close()
         return messages
+    session.close()
     raise PermissionError("Chatroom not found or access denied")
 
 def add_emoticon(name: str, url: str, size: str, animated: bool, category: str, chatroom: str):
@@ -52,6 +70,7 @@ def add_emoticon(name: str, url: str, size: str, animated: bool, category: str, 
     emoticon = Emoticon(name=name, url=url, size=size, animated=animated, category=category, chatroom=chatroom)
     session.add(emoticon)
     session.commit()
+    session.close()
     return emoticon
 
 def get_emoticons(category: str):
@@ -60,6 +79,7 @@ def get_emoticons(category: str):
         emoticons = session.query(Emoticon).filter_by(category=category).all()
     else:
         emoticons = session.query(Emoticon).all()
+    session.close()
     return emoticons
 
 def upload_file(filename: str, url: str, edited_by: List[str], chatroom: str):
@@ -67,20 +87,19 @@ def upload_file(filename: str, url: str, edited_by: List[str], chatroom: str):
     file = File(filename=filename, url=url, version=1, uploaded_at=datetime.now(), chatroom=chatroom, edited_by=','.join(edited_by))
     session.add(file)
     session.commit()
+    session.close()
     return file
 
 def update_file_version(filename: str, new_url: str, edited_by: List[str], chatroom: str):
     session = db.get_session()
     
-    # 기존 파일 검색
     existing_files = session.query(File).filter_by(filename=filename, chatroom=chatroom).order_by(File.version.desc()).all()
     if not existing_files:
-        return None  # 파일이 존재하지 않으면 None 반환
+        session.close()
+        return None
     
-    # 새로운 버전을 추가
     new_version = existing_files[0].version + 1
 
-    # 새로운 파일 버전을 추가하며, 기존 파일을 유지
     file = File(
         filename=filename, 
         url=new_url, 
@@ -95,7 +114,6 @@ def update_file_version(filename: str, new_url: str, edited_by: List[str], chatr
     return file
 
 def get_room_data(chatroom: str):
-
     session = db.get_session()
     room = session.query(ChatRoom).filter_by(name=chatroom).first()
     if room:
@@ -103,12 +121,9 @@ def get_room_data(chatroom: str):
         emoticons = session.query(Emoticon).filter_by(chatroom=chatroom).all()
         files = session.query(File).filter_by(chatroom=chatroom).all()
         
-        # Combine all data
         combined_data = messages + emoticons + files
-
-        # Sort by datetime attribute
-        combined_data.sort(key=lambda x: x.datetime)
-
+        combined_data.sort(key=lambda x: x.timestamp)
+        
         session.close()
         return combined_data
 
