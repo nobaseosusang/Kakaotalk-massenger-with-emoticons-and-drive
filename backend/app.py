@@ -2,7 +2,7 @@ import os
 from flask import Flask, request, jsonify, session, g
 from src.database.controller import (
     register_user, authenticate_user, create_chatroom, send_message, get_messages, 
-    add_emoticon, get_emoticons, upload_file, update_file_version, get_room_data
+    add_emoticon, get_emoticons, upload_file, update_file_version, get_room_data,send_emoticon
 )
 from src.database.database import Database
 from src.database.models import Base
@@ -59,75 +59,136 @@ def login():
     data = request.get_json()
     if data is None:
         return jsonify({'status': 'Invalid input, JSON data expected'}), 400
+    
     if authenticate_user(data['username'], data['password']):
         session['username'] = data['username']
-        return jsonify({'status': 'Login successful'})
+        print(f"Username {data['username']} stored in session")
+        return jsonify({'status': 'Login successful','username':session['username']})
+    
+    print("Login failed: Invalid credentials")
     return jsonify({'status': 'Invalid credentials'}), 401
+
+@app.route('/check_username', methods=['POST'])
+def checkon():
+    username = session.get('username')
+    return jsonify({'username' : username})
+
+    
 
 @app.route('/create_chatroom', methods=['POST'])
 def create_chatroom_route():
     data = request.get_json()
     if data is None:
         return jsonify({'status': 'Invalid input, JSON data expected'}), 400
-    chatroom, error = create_chatroom(data['name'], data['allowed_users'])
+    
+    chatroom_data, error = create_chatroom(data['name'], data['allowed_users'])
     if error:
-        return jsonify({'status': 'Error', 'message': error}), 409  # 409 Conflict 상태 코드 반환
-    return jsonify({'status': 'Chatroom created', 'chatroom': chatroom.name})
+        return jsonify({'status': 'Error', 'message': error}), 409  
+    
+    return jsonify({'status': 'Chatroom created', 'chatroom': chatroom_data['name']})
+
 
 
 @app.route('/send_message', methods=['POST'])
 def send_message_route():
     if 'username' not in session:
         return jsonify({'status': 'Unauthorized'}), 401
+    
     data = request.get_json()
     if data is None:
         return jsonify({'status': 'Invalid input, JSON data expected'}), 400
-    try:
-        message = send_message(session['username'], data['text'], data['chatroom'])
-        return jsonify({'status': 'Message sent', 'message': message.dict()})
-    except PermissionError as e:
-        return jsonify({'status': str(e)}), 403
+    
+    username = session.get('username')
+    message_data, error = send_message(username, data['text'], data['chatroom'])
+    
+    if error:
+        return jsonify({'status': 'Error', 'message': error}), 403
+    
+    return jsonify({'status': 'Message sent', 'message': message_data})
+
 
 @app.route('/get_messages', methods=['GET'])
 def get_messages_route():
     if 'username' not in session:
         return jsonify({'status': 'Unauthorized'}), 401
-    chatroom = request.args.get('chatroom')
-    try:
-        if not chatroom:
-            return jsonify({'status': 'Chatroom name is required'}), 400
     
-        messages = get_messages(chatroom)
-        return jsonify([message.dict() for message in messages])
-    except PermissionError as e:
-        return jsonify({'status': str(e)}), 403
+    chatroom = request.args.get('chatroom')
+    if not chatroom:
+        return jsonify({'status': 'Chatroom name is required'}), 400
+    
+    messages, error = get_messages(chatroom)
+    if error:
+        return jsonify({'status': 'Error', 'message': error}), 403
+    
+    # 각 메시지를 딕셔너리로 변환
+    messages_data = [message.to_dict() for message in messages]
+    
+    return jsonify(messages_data)
+
 
 @app.route('/add_emoticon', methods=['POST'])
 def add_emoticon_route():
     data = request.get_json()
     if data is None:
         return jsonify({'status': 'Invalid input, JSON data expected'}), 400
-    emoticon = add_emoticon(data['name'], data['url'], data['size'], data['animated'], data['category'], data['chatroom'])
-    return jsonify({'status': 'Emoticon added', 'emoticon': emoticon.dict()})
+    
+    emoticon_data, error = add_emoticon(data['name'], data['url'], data['size'], data['animated'], data['category'], data['chatroom'])
+    if error:
+        return jsonify({'status': 'Error', 'message': error}), 409  # 409 Conflict 상태 코드 반환
+    
+    return jsonify({'status': 'Emoticon added', 'emoticon': emoticon_data})
 
 @app.route('/get_emoticons', methods=['GET'])
 def get_emoticons_route():
     category = request.args.get('category')
-    if not category:
-        return jsonify({'status': 'Category name is required'}), 400
     
-    emoticons = get_emoticons(category)
-    return jsonify([emoticon.dict() for emoticon in emoticons])
+    emoticons, error = get_emoticons(category)
+    if error:
+        return jsonify({'status': 'Error', 'message': error}), 400
+
+    # 이모티콘 리스트를 딕셔너리로 변환하여 반환
+    emoticons_data = [emoticon.to_dict() for emoticon in emoticons]
+    return jsonify(emoticons_data)
+
+@app.route('/send_emoticon', methods=['POST'])
+def send_emoticon_route():
+    if 'username' not in session:
+        return jsonify({'status': 'Unauthorized'}), 401
+
+    data = request.get_json()
+    if data is None:
+        return jsonify({'status': 'Invalid input, JSON data expected'}), 400
+
+    username = session.get('username')
+    emoticon_id = data.get('emoticon_id')
+    chatroom = data.get('chatroom')
+
+    if not emoticon_id or not chatroom:
+        return jsonify({'status': 'Missing emoticon ID or chatroom'}), 400
+
+    result, error = send_emoticon(username, emoticon_id, chatroom)
+
+    if error:
+        return jsonify({'status': 'Error', 'message': error}), 403
+
+    return jsonify({'status': 'Emoticon sent', 'emoticon': result})
+
 
 @app.route('/upload_file', methods=['POST'])
 def upload_file_route():
     if 'username' not in session:
         return jsonify({'status': 'Unauthorized'}), 401
+    
     data = request.get_json()
     if data is None:
         return jsonify({'status': 'Invalid input, JSON data expected'}), 400
-    file = upload_file(data['filename'], data['url'], data['edited_by'], data['chatroom'])
-    return jsonify({'status': 'File uploaded', 'file': file.dict()})
+    
+    file, error = upload_file(data['filename'], data['url'], data['edited_by'], data['chatroom'])
+    if error:
+        return jsonify({'status': 'Error', 'message': error}), 409  # 409 Conflict 상태 코드 반환
+    
+    return jsonify({'status': 'File uploaded', 'file': file.to_dict()})
+
 
 @app.route('/update_file_version', methods=['POST'])
 def update_file_version_route():

@@ -27,6 +27,16 @@ class Message(Base):
     timestamp = Column(DateTime, default=datetime.utcnow)
     chatroom = Column(String, ForeignKey('chatrooms.name'), nullable=False)
     read_by = Column(Text)  # Stores as comma-separated string
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'username': self.username,
+            'text': self.text,
+            'timestamp': self.timestamp.isoformat(),
+            'chatroom': self.chatroom,
+            'read_by': self.read_by.split(',') if self.read_by else []
+        }
+
 
 class Emoticon(Base):
     __tablename__ = 'emoticons'
@@ -39,6 +49,17 @@ class Emoticon(Base):
     category = Column(String, nullable=False)
     chatroom = Column(String, ForeignKey('chatrooms.name'), nullable=False)
     timestamp = Column(DateTime, default=datetime.utcnow)
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'url': self.url,
+            'size': self.size,
+            'animated': self.animated,
+            'category': self.category,
+            'chatroom': self.chatroom,
+            'timestamp': self.timestamp.isoformat()
+        }
 
 class File(Base):
     __tablename__ = 'files'
@@ -50,3 +71,14 @@ class File(Base):
     uploaded_at = Column(DateTime, default=datetime.utcnow)
     chatroom = Column(String, ForeignKey('chatrooms.name'), nullable=False)
     edited_by = Column(Text)  # Stores as comma-separated string
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'filename': self.filename,
+            'url': self.url,
+            'version': self.version,
+            'uploaded_at': self.uploaded_at.isoformat(),
+            'chatroom': self.chatroom,
+            'edited_by': self.edited_by.split(',') if self.edited_by else []
+        }
+    

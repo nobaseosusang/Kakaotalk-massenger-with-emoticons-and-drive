@@ -41,11 +41,14 @@ def authenticate_user(username: str, password: str) -> bool:
 def create_chatroom(name: str, allowed_users: List[str]):
     session = db.get_session()
     try:
-        # 새 채팅방 추가
+
         chatroom = ChatRoom(name=name, allowed_users=','.join(allowed_users))
         session.add(chatroom)
         session.commit()
-        return chatroom, None
+
+        chatroom_data = {'name': chatroom.name, 'id': chatroom.id}
+
+        return chatroom_data, None
     finally:
         session.close()
 
@@ -57,10 +60,22 @@ def send_message(username: str, text: str, chatroom: str):
             message = Message(username=username, text=text, timestamp=datetime.now(), chatroom=chatroom)
             session.add(message)
             session.commit()
-            return message, None
+
+            # 세션이 닫히기 전에 필요한 데이터를 미리 추출
+            message_data = {
+                'id': message.id,
+                'username': message.username,
+                'text': message.text,
+                'timestamp': message.timestamp.isoformat(),  # datetime을 문자열로 변환
+                'chatroom': message.chatroom,
+                'read_by': message.read_by.split(',') if message.read_by else []
+            }
+            return message_data, None
+        
         raise PermissionError("User not allowed in this chatroom")
     finally:
         session.close()
+
 
 def get_messages(chatroom: str):
     session = db.get_session()
@@ -76,35 +91,69 @@ def get_messages(chatroom: str):
 def add_emoticon(name: str, url: str, size: str, animated: bool, category: str, chatroom: str):
     session = db.get_session()
     try:
-        # 새 이모티콘 추가 (중복 검사 없음)
         emoticon = Emoticon(name=name, url=url, size=size, animated=animated, category=category, chatroom=chatroom)
         session.add(emoticon)
         session.commit()
-        return emoticon, None
+        emoticon_data = emoticon.to_dict()
+
+        return emoticon_data, None
     finally:
         session.close()
 
-def get_emoticons(category: str):
+
+def get_emoticons(category: str = None):
     session = db.get_session()
     try:
         if category:
             emoticons = session.query(Emoticon).filter_by(category=category).all()
         else:
             emoticons = session.query(Emoticon).all()
+        
         return emoticons, None
     finally:
         session.close()
 
+
+def send_emoticon(username: str, emoticon_id: int, chatroom: str):
+    session = db.get_session()
+    try:
+        # 채팅방과 이모티콘 찾기
+        room = session.query(ChatRoom).filter_by(name=chatroom).first()
+        emoticon = session.query(Emoticon).filter_by(id=emoticon_id).first()
+
+        if not room or not emoticon:
+            return None, "Chatroom or Emoticon not found"
+
+        if username not in room.allowed_users.split(','):
+            return None, "User not allowed in this chatroom"
+
+        # 이모티콘을 메시지처럼 채팅방에 추가
+        message = Message(username=username, text=f"[Emoticon: {emoticon.name}]", chatroom=chatroom, timestamp=datetime.now())
+        session.add(message)
+        session.commit()
+
+        # 세션이 닫히기 전에 필요한 데이터를 추출
+        message_data = message.to_dict()
+
+        return message_data, None
+    finally:
+        session.close()
+
+
 def upload_file(filename: str, url: str, edited_by: List[str], chatroom: str):
     session = db.get_session()
     try:
-        # 새 파일 추가 (중복 검사 없음)
         file = File(filename=filename, url=url, version=1, uploaded_at=datetime.now(), chatroom=chatroom, edited_by=','.join(edited_by))
         session.add(file)
         session.commit()
-        return file, None
+
+        # 세션이 닫히기 전에 필요한 데이터를 미리 추출
+        file_data = file.to_dict()
+
+        return file_data, None
     finally:
         session.close()
+
 
 def update_file_version(filename: str, new_url: str, edited_by: List[str], chatroom: str):
     session = db.get_session()
