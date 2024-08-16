@@ -155,6 +155,7 @@ def upload_file(filename: str, url: str, edited_by: List[str], chatroom: str):
         session.close()
 
 
+
 def update_file_version(filename: str, new_url: str, edited_by: List[str], chatroom: str):
     session = db.get_session()
     try:
@@ -174,9 +175,14 @@ def update_file_version(filename: str, new_url: str, edited_by: List[str], chatr
         )
         session.add(file)
         session.commit()
-        return file, None
+
+        # 세션이 닫히기 전에 필요한 데이터를 미리 추출
+        file_data = file.to_dict()
+
+        return file_data, None
     finally:
         session.close()
+
 
 def get_room_data(chatroom: str):
     session = db.get_session()
@@ -187,9 +193,12 @@ def get_room_data(chatroom: str):
             emoticons = session.query(Emoticon).filter_by(chatroom=chatroom).all()
             files = session.query(File).filter_by(chatroom=chatroom).all()
             
+            # Combine all data
             combined_data = messages + emoticons + files
-            combined_data.sort(key=lambda x: x.timestamp)
-            
+
+            # Sort by the appropriate datetime attribute
+            combined_data.sort(key=lambda x: x.timestamp if hasattr(x, 'timestamp') else x.uploaded_at)
+
             return combined_data, None
         raise PermissionError("Chatroom not found or access denied")
     finally:

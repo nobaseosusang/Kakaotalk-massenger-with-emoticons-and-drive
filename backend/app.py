@@ -187,7 +187,7 @@ def upload_file_route():
     if error:
         return jsonify({'status': 'Error', 'message': error}), 409  # 409 Conflict 상태 코드 반환
     
-    return jsonify({'status': 'File uploaded', 'file': file.to_dict()})
+    return jsonify({'status': 'File uploaded', 'file': file})
 
 
 @app.route('/update_file_version', methods=['POST'])
@@ -195,25 +195,31 @@ def update_file_version_route():
     data = request.get_json()
     if data is None:
         return jsonify({'status': 'Invalid input, JSON data expected'}), 400
-    updated_file = update_file_version(data['filename'], data['new_url'], data['edited_by'], data['chatroom'])
-    if updated_file:
-        return jsonify({'status': 'File updated', 'file': updated_file.dict()})
-    else:
-        return jsonify({'status': 'File not found'}), 404
+    
+    updated_file, error = update_file_version(data['filename'], data['new_url'], data['edited_by'], data['chatroom'])
+    if error:
+        return jsonify({'status': 'Error', 'message': error}), 404  # 404 Not Found 상태 코드 반환
+    
+    return jsonify({'status': 'File updated', 'file': updated_file})
+
 
 @app.route('/get_room_data', methods=['GET'])
 def get_room_data_route():
     if 'username' not in session:
         return jsonify({'status': 'Unauthorized'}), 401
+    
     chatroom = request.args.get('chatroom')
     if not chatroom:
         return jsonify({'status': 'Chatroom name is required'}), 400
-
-    try:
-        room_data = get_room_data(chatroom)
-        return jsonify([item.dict() for item in room_data])
-    except PermissionError as e:
-        return jsonify({'status': str(e)}), 403
+    
+    room_data, error = get_room_data(chatroom)
+    if error:
+        return jsonify({'status': 'Error', 'message': error}), 403
+    
+    # 각 객체를 to_dict() 메서드를 통해 딕셔너리로 변환
+    room_data_dicts = [item.to_dict() for item in room_data]
+    
+    return jsonify(room_data_dicts)
 
 
 if __name__ == "__main__":
