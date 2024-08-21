@@ -38,7 +38,7 @@ deactivate () {
 # unset irrelevant variables
 deactivate nondestructive
 
-VIRTUAL_ENV="/home/sdwq/Kakaotalk-massenger-with-emoticons-and-drive/venv"
+VIRTUAL_ENV="/home/talisman/Kakaotalk-massenger-with-emoticons-and-drive/venv"
 export VIRTUAL_ENV
 
 _OLD_VIRTUAL_PATH="$PATH"

@@ -7,12 +7,12 @@ from src.database.controller import (
 from src.database.database import Database
 from src.database.models import Base
 from flask_cors import CORS
-
+from config import config
 def create_app():
     app = Flask(__name__)
     CORS(app)
 
-    app.secret_key = os.urandom(24)
+    app.config["SECRET_KEY"] = config.SECRET_KEY
 
     # Database 객체 생성
     database = Database()

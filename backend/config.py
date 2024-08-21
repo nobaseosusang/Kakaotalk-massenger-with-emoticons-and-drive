@@ -1,6 +1,6 @@
 class Config:
-    SECRET_KEY = 'your_secret_key 아무거나 넣으면 됨'
-    DATABASE_URI = 'sqlite://./db.sqlite3'
+    SECRET_KEY = 'your_secret_key'
+    DATABASE_URI = 'sqlite:///chat_app.db'
     
 
 config = Config()
