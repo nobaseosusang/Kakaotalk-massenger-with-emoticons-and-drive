@@ -1,6 +1,7 @@
 from datetime import datetime
 from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, ForeignKey
 from sqlalchemy.ext.declarative import DeclarativeMeta, declarative_base
+from src.database.database import engine
 
 Base: DeclarativeMeta = declarative_base()
 
@@ -82,3 +83,5 @@ class File(Base):
             'edited_by': self.edited_by.split(',') if self.edited_by else []
         }
     
+
+Base.metadata.create_all(bind=engine)
