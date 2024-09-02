@@ -1,13 +1,17 @@
-import os
 from flask import Flask, request, jsonify, session, g
+from flask_cors import CORS
+
+
 from src.database.controller import (
     register_user, authenticate_user, create_chatroom, send_message, get_messages, 
     add_emoticon, get_emoticons, upload_file, update_file_version, get_room_data,send_emoticon
 )
-from src.database.database import Database
-from src.database.models import Base
-from flask_cors import CORS
 from config import config
+from src.database.database import get_db
+
+
+
+
 def create_app():
     app = Flask(__name__)
     CORS(app)
@@ -15,16 +19,10 @@ def create_app():
     app.config["SECRET_KEY"] = config.SECRET_KEY
 
     # Database 객체 생성
-    database = Database()
-
-    # 데이터베이스 엔진에 메타데이터를 바인딩하여 테이블 생성
-    with app.app_context():
-        Base.metadata.bind = database.engine  # 명시적으로 엔진을 바인딩
-        Base.metadata.create_all()  # 테이블 생성
 
     @app.before_request
     def before_request():
-        g.db_session = database.get_session()
+        g.db_session = get_db()
 
     return app
 
@@ -48,7 +46,8 @@ def register():
     if data is None:
         return jsonify({'status': 'Invalid input, JSON data expected'}), 400
     
-    user_data, error = register_user(data['username'], data['password'])
+    
+    user_data, error = register_user(db=g.db_session, username=data['username'], password=data['password'])
     if error:
         return jsonify({'status': 'Error', 'message': error}), 409  # 409 Conflict 상태 코드 반환
     
@@ -60,7 +59,7 @@ def login():
     if data is None:
         return jsonify({'status': 'Invalid input, JSON data expected'}), 400
     
-    if authenticate_user(data['username'], data['password']):
+    if authenticate_user(db=g.db_session, username=data['username'], password=data['password']):
         session['username'] = data['username']
         print(f"Username {data['username']} stored in session")
         return jsonify({'status': 'Login successful','username':session['username']})
@@ -81,7 +80,7 @@ def create_chatroom_route():
     if data is None:
         return jsonify({'status': 'Invalid input, JSON data expected'}), 400
     
-    chatroom_data, error = create_chatroom(data['name'], data['allowed_users'])
+    chatroom_data, error = create_chatroom(db=g.db_session, name=data['name'], allowed_users=data['allowed_users'])
     if error:
         return jsonify({'status': 'Error', 'message': error}), 409  
     
@@ -99,7 +98,7 @@ def send_message_route():
         return jsonify({'status': 'Invalid input, JSON data expected'}), 400
     
     username = session.get('username')
-    message_data, error = send_message(username, data['text'], data['chatroom'])
+    message_data, error = send_message(db=g.db_session, username=username, text=data['text'], chatroom=data['chatroom'])
     
     if error:
         return jsonify({'status': 'Error', 'message': error}), 403
@@ -116,7 +115,7 @@ def get_messages_route():
     if not chatroom:
         return jsonify({'status': 'Chatroom name is required'}), 400
     
-    messages, error = get_messages(chatroom)
+    messages, error = get_messages(db=g.db_session, chatroom=chatroom)
     if error:
         return jsonify({'status': 'Error', 'message': error}), 403
     
@@ -132,7 +131,7 @@ def add_emoticon_route():
     if data is None:
         return jsonify({'status': 'Invalid input, JSON data expected'}), 400
     
-    emoticon_data, error = add_emoticon(data['name'], data['url'], data['size'], data['animated'], data['category'], data['chatroom'])
+    emoticon_data, error = add_emoticon(db=g.db_session, **data)
     if error:
         return jsonify({'status': 'Error', 'message': error}), 409  # 409 Conflict 상태 코드 반환
     
@@ -142,7 +141,7 @@ def add_emoticon_route():
 def get_emoticons_route():
     category = request.args.get('category')
     
-    emoticons, error = get_emoticons(category)
+    emoticons, error = get_emoticons(db=g.db_session, category=category)
     if error:
         return jsonify({'status': 'Error', 'message': error}), 400
 
@@ -166,7 +165,7 @@ def send_emoticon_route():
     if not emoticon_id or not chatroom:
         return jsonify({'status': 'Missing emoticon ID or chatroom'}), 400
 
-    result, error = send_emoticon(username, emoticon_id, chatroom)
+    result, error = send_emoticon(db=g.db_session, username=username, emoticon_id=emoticon_id, chatroom=chatroom)
 
     if error:
         return jsonify({'status': 'Error', 'message': error}), 403
@@ -183,7 +182,7 @@ def upload_file_route():
     if data is None:
         return jsonify({'status': 'Invalid input, JSON data expected'}), 400
     
-    file, error = upload_file(data['filename'], data['url'], data['edited_by'], data['chatroom'])
+    file, error = upload_file(db=g.db_session, filename=data['filename'], url=data['url'], edited_by=data['edited_by'], chatroom=data['chatroom'])
     if error:
         return jsonify({'status': 'Error', 'message': error}), 409  # 409 Conflict 상태 코드 반환
     
@@ -196,7 +195,7 @@ def update_file_version_route():
     if data is None:
         return jsonify({'status': 'Invalid input, JSON data expected'}), 400
     
-    updated_file, error = update_file_version(data['filename'], data['new_url'], data['edited_by'], data['chatroom'])
+    updated_file, error = update_file_version(db=g.db_session, filename=data['filename'], new_url=data['new_url'], edited_by=data['edited_by'], chatroom=data['chatroom'])
     if error:
         return jsonify({'status': 'Error', 'message': error}), 404  # 404 Not Found 상태 코드 반환
     
@@ -212,7 +211,7 @@ def get_room_data_route():
     if not chatroom:
         return jsonify({'status': 'Chatroom name is required'}), 400
     
-    room_data, error = get_room_data(chatroom)
+    room_data, error = get_room_data(db=g.db_session, chatroom=chatroom)
     if error:
         return jsonify({'status': 'Error', 'message': error}), 403
     
